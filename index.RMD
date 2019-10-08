@@ -1,0 +1,247 @@
+---
+title: 'Quality of Personal Activity: Machine Learning'
+author: "Lucas Qualmann"
+date: "10/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Synopsis
+
+The goal of this project is to predict how well an exercize is done based on wearable technology.  After building a couple of machine learning models, we find a random forest model gives us the best prediction with an expected accuracy of .9945 for any out of sample datasets.
+
+The original source for the data used in this project is http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+## Data Processing
+
+All R code for the data processing is located in the appendix.  After downloading the files and reading them into R, we put 75% of the data into a training set, and 25% into a testing set.  The 20 test cases are loaded as a validation set.  There are a lot of variables which has a high number of NA or blank data in the training set, so those variables will be removed (any variables removed from the training set are also removed from the testing and validation sets).  Next, after checking what the classes of each variable is, cvtd_timestamp is removed as a variable since it is a factor variable and the raw timestamp variables should have it covered.  Finally the remaining first 6 variables in the dataset are removed since the time, username, and window shouldn't be correlated to the classe variable (and if they remain in the datasets they mess up the accuracy of the models).
+
+```{r, message=FALSE}
+#download and read files
+if(!file.exists("traindata.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+        download.file(url, "traindata.csv")
+}
+if(!file.exists("testdata.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+        download.file(url, "testdata.csv")
+}
+data <- read.csv("traindata.csv")
+validation <- read.csv("testdata.csv")
+
+#split the data into a training and test set
+library(caret)
+set.seed(715)
+inTrain = createDataPartition(data$classe, p = 3/4)[[1]]
+training = data[ inTrain,]
+testing = data[-inTrain,]
+
+#remove variables with a high number of NAs
+columnNa <- data.frame(colSums(is.na(training)), c(1:160))
+library(dplyr)
+columnNa <- columnNa %>% filter(colSums.is.na.training.. > (14718 * .1)) %>% 
+                pull(c.1.160.)
+training <- training[, -columnNa]
+testing <- testing[, -columnNa]
+validation <- validation[, -columnNa]
+
+#remove variables with a high number of blank data
+columnBlank <- data.frame(colSums(training == ""), c(1:93))
+columnBlank <- columnBlank %>% 
+                    filter(colSums.training....... > (14718 * .1)) %>% 
+                    pull(c.1.93.)
+training <- training[, -columnBlank]
+testing <- testing[, -columnBlank]
+validation <- validation[, -columnBlank]
+
+#check classes in all data
+class <- c()
+for (i in 1:60) {
+        class[i] <- class(training[, i])
+}
+class <- data.frame(class, c(1:60))
+factors <- class %>% filter(class == "factor")
+
+#remove the dates factor variable
+training <- training[, -5]
+testing <- testing[, -5]
+validation <- validation[, -5]
+
+#remove the first six variable as they shouldn't impact our predictions
+training <- training[, -c(1:6)]
+testing <- testing[, -c(1:6)]
+validation <- validation[, -c(1:6)]
+```
+
+## Building the Model
+
+We'll build 3 models on the dataset (random forest, linear discrimination analysis, and boosting) and pick the model with the best performance on the training set as our model.  All R code is located in the appendix, and due to the amount of time it takes to run the algorithms, I've added a step to save the models into an rds file for future use.  I used all the remaining variables for each of the models after we processed the data.  For the random forest and boosting models, we'll use 5 k-folds for cross validation instead of the default values to reduce the computing time of the algorithm.  The results give us an accuracy of 1 for the random forest, .7055 for the linear discrimination analysis, and .9719 for boosting on the training set.  Since the random forest model works out best on the training set, we will use that as our final model.
+
+## Model Performance
+
+First, we'll plot the model error rate based on the number of trees.  Due to an issue of getting the plot to work when the R markdown file was knitted, I saved the plot as a png and loaded it from the png file.  As you can see below, after about 50-100 trees, the error rate of the model flattens out suggesting little improvement after that point.
+
+```{r}
+model <- readRDS("random_forest_model.rds")
+library(png)
+plot <- readPNG("plot1.png", native = TRUE)
+grid::grid.raster(plot)
+```
+
+Next, we want to look at the accuracy of our model on the test data set by looking at the confusion matrix of the predicted values vs the actual values for the test data set (see below).  Accuracy ended up dropping down to .9945 which makes sense since the training data would overfit the model.  Still that is a really high accuracy value.  The sensitivity and specifity rates for each variable is also in the upper 90% area with the lowest value being sensitivity for classe C at .9815.  The results of this analysis show a model which should be extremely accurate at predicting the classe of workout quality for new data.
+
+```{r}
+confusionMatrix(testing$classe, predict(model, testing))
+```
+
+## Appendix
+
+### Code Help
+
+The link below was a great help in speeding up the processing time in R for the random forest model.
+
+https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
+
+### R Code
+
+Data Processing
+
+```{r, eval=FALSE, echo=TRUE}
+#download and read files
+if(!file.exists("traindata.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+        download.file(url, "traindata.csv")
+}
+if(!file.exists("testdata.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+        download.file(url, "testdata.csv")
+}
+data <- read.csv("traindata.csv")
+validation <- read.csv("testdata.csv")
+
+#split the data into a training and test set
+library(caret)
+set.seed(715)
+inTrain = createDataPartition(data$classe, p = 3/4)[[1]]
+training = data[ inTrain,]
+testing = data[-inTrain,]
+
+#remove variables with a high number of NAs
+columnNa <- data.frame(colSums(is.na(training)), c(1:160))
+library(dplyr)
+columnNa <- columnNa %>% filter(colSums.is.na.training.. > (14718 * .1)) %>% 
+                pull(c.1.160.)
+training <- training[, -columnNa]
+testing <- testing[, -columnNa]
+validation <- validation[, -columnNa]
+
+#remove variables with a high number of blank data
+columnBlank <- data.frame(colSums(training == ""), c(1:93))
+columnBlank <- columnBlank %>% 
+                    filter(colSums.training....... > (14718 * .1)) %>% 
+                    pull(c.1.93.)
+training <- training[, -columnBlank]
+testing <- testing[, -columnBlank]
+validation <- validation[, -columnBlank]
+
+#check classes in all data
+class <- c()
+for (i in 1:60) {
+        class[i] <- class(training[, i])
+}
+class <- data.frame(class, c(1:60))
+factors <- class %>% filter(class == "factor")
+
+#remove the dates factor variable
+training <- training[, -5]
+testing <- testing[, -5]
+validation <- validation[, -5]
+
+#remove the first six variable as they shouldn't impact our predictions
+training <- training[, -c(1:6)]
+testing <- testing[, -c(1:6)]
+validation <- validation[, -c(1:6)]
+```
+
+Model Building & Selection
+
+```{r, eval=FALSE, echo=TRUE}
+#random forest
+set.seed(99)
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(method = "cv", number = 5, allowParallel = TRUE)
+start <- Sys.time()
+rfModel <- train(classe ~ ., data = training, method = "rf", 
+                 trControl = fitControl)
+finish <- Sys.time()
+finish - start
+stopCluster(cluster)
+registerDoSEQ()
+saveRDS(rfModel, "./random_forest_model.rds")
+rfModel
+confusionMatrix(training$classe, predict(rfModel, training))
+
+
+#linear discrimination analysis
+set.seed(99)
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(allowParallel = TRUE)
+ldaModel <- train(classe ~ ., data = training, method = "lda", 
+                  trControl = fitControl)
+stopCluster(cluster)
+registerDoSEQ()
+saveRDS(ldaModel, "./lda_model.rds")
+ldaModel$finalModel
+confusionMatrix(training$classe, predict(ldaModel, training))
+
+
+#boosting
+set.seed(99)
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(method = "cv", number = 5, allowParallel = TRUE)
+gbmModel <- train(classe ~ ., data = training, method = "gbm", 
+                  trControl = fitControl)
+stopCluster(cluster)
+registerDoSEQ()
+saveRDS(gbmModel, "./gbm_model.rds")
+gbmModel$finalModel
+confusionMatrix(training$classe, predict(gbmModel, training))
+```
+
+Model Plot
+
+```{r, eval=FALSE, echo=TRUE}
+model <- readRDS("random_forest_model.rds")
+png("plot1.png", width = 480, height = 480)
+plot(model$finalModel, lwd = 2, 
+     main = "Random Forest Model Error Rate")
+dev.off()
+library(png)
+plot <- readPNG("plot1.png", native = TRUE)
+grid::grid.raster(plot)
+```
+
+Confusion Matrix
+
+```{r, eval=FALSE, echo=TRUE}
+confusionMatrix(testing$classe, predict(model, testing))
+```
+
+### R Session Info
+```{r}
+print(sessionInfo())
+```
+
+
