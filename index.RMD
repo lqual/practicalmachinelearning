@@ -82,7 +82,7 @@ We'll build 3 models on the dataset (random forest, linear discrimination analys
 
 ## Model Performance
 
-First, we'll plot the model error rate based on the number of trees.  Due to an issue of getting the plot to work when the R markdown file was knitted, I saved the plot as a png and loaded it from the png file.  As you can see below, after about 50-100 trees, the error rate of the model flattens out suggesting little improvement after that point.
+First, we'll plot the model error rate based on the number of trees.  Due to an issue of getting the plot to work when the R markdown file was knitted, I saved the plot as a png and loaded it from the png file.  As you can see below, after about 50-100 trees, the error rate of the model flattens out suggesting little improvements after that point.
 
 ```{r}
 model <- readRDS("random_forest_model.rds")
