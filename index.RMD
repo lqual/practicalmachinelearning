@@ -91,7 +91,7 @@ plot <- readPNG("plot1.png", native = TRUE)
 grid::grid.raster(plot)
 ```
 
-Next, we want to look at the accuracy of our model on the test data set by looking at the confusion matrix of the predicted values vs the actual values for the test data set (see below).  Accuracy ended up dropping down to .9945 which makes sense since the training data would overfit the model.  Still that is a really high accuracy value.  The sensitivity and specifity rates for each variable is also in the upper 90% area with the lowest value being sensitivity for classe C at .9815.  The results of this analysis show a model which should be extremely accurate at predicting the classe of workout quality for new data.
+Next, we want to look at the accuracy of our model on the test data set by looking at the confusion matrix of the predicted values vs the actual values for the test data set (see below).  Accuracy ended up dropping down to .9945 which makes sense since the training data would overfit the model.  The out of sample error rate is 0.0055 (1 minus the accuracy).  This is a really low error rate for a model.  The sensitivity and specifity rates for each variable is also in the upper 90% area with the lowest value being sensitivity for classe C at .9815.  The results of this analysis show a model which should be extremely accurate at predicting the classe of workout quality for new data.
 
 ```{r}
 confusionMatrix(testing$classe, predict(model, testing))
